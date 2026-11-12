@@ -1,0 +1,13 @@
+# Binaries
+env-updater.exe
+dist/
+
+# Test artifacts and local env files
+.env
+.env.bak.*
+*.tmp
+*.tmp.*
+
+# OS files
+.DS_Store
+Thumbs.db
