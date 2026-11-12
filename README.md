@@ -23,6 +23,22 @@ A fast, zero-dependency, cross-platform CLI tool written in Go to synchronize `.
 
 ## Installation
 
+### Interactive installer (Linux/macOS)
+
+Copy and run this command. It offers a SHA-256-verified prebuilt binary or a build from source (requires Go):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AhmadShamli/env-updater/main/install.sh | sh
+```
+
+Choose a method directly for non-interactive use. Add `--dir "$HOME/.local/bin"` to set the destination:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/AhmadShamli/env-updater/main/install.sh | sh -s -- --binary --dir "$HOME/.local/bin" --yes
+```
+
+The installer targets the current user's `~/.local/bin` by default (`/usr/local/bin` when run as root). The prebuilt option requires a published GitHub release asset for Linux/macOS and the machine's architecture. The source option builds the latest Go module version. Windows users can use `go install` below or download the matching `.exe` from GitHub Releases.
+
 ### Via `go install`
 
 ```sh

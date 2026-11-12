@@ -40,7 +40,7 @@ sed "s/^VERSION=\"[^\"]*\"/VERSION=\"${version}\"/" "$ROOT/scripts/env-updater.s
 cat "$stamp" > "$ROOT/scripts/env-updater.sh"
 
 # Build static, stripped Go binary (runs in scratch / Alpine / distroless containers)
-(cd "$ROOT" && CGO_ENABLED=0 go build -trimpath -ldflags "-X main.Version=${version} -X main.VersionMarker=@env-updater-version:${version}@ -s -w" -o "$BIN" .)
+(cd "$ROOT" && CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-X main.Version=${version} -X main.VersionMarker=@env-updater-version:${version}@ -s -w" -o "$BIN" .)
 
 sha() {
     if command -v sha256sum >/dev/null 2>&1; then
@@ -59,7 +59,7 @@ for platform in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 
     goarch="${platform#*/}"
     name="env-updater-${goos}-${goarch}"
     if [ "$goos" = windows ]; then name="${name}.exe"; fi
-    (cd "$ROOT" && CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags "-X main.Version=${version} -X main.VersionMarker=@env-updater-version:${version}@ -s -w" -o "$ROOT/dist/$name" .)
+    (cd "$ROOT" && CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" go build -buildvcs=false -trimpath -ldflags "-X main.Version=${version} -X main.VersionMarker=@env-updater-version:${version}@ -s -w" -o "$ROOT/dist/$name" .)
     printf '%s  %s\n' "$(sha "$ROOT/dist/$name")" "$name" > "$ROOT/dist/$name.sha256"
 done
 

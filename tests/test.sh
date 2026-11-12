@@ -441,6 +441,69 @@ else
 fi
 
 # ------------------------------------------------------------------------------
+printf "\nTest 16: Standalone installer binary and source paths\n"
+installer_tmp="$(newdir installer)"
+installer_mock="$installer_tmp/mock-bin"
+VERSION="$(tr -d ' \t\r\n' < "$REPO_ROOT/VERSION")"
+sha() {
+    if command -v sha256sum >/dev/null 2>&1; then sha256sum "$1" | awk '{print $1}'; else shasum -a 256 "$1" | awk '{print $1}'; fi
+}
+mkdir -p "$installer_mock"
+cat > "$installer_mock/curl" <<'EOF'
+#!/bin/sh
+set -eu
+output=
+url=
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -o) shift; output=$1 ;;
+        -*) ;;
+        *) url=$1 ;;
+    esac
+    shift
+done
+case "$url" in
+    *.sha256) cp "$TEST_INSTALL_CHECKSUM" "$output" ;;
+    *) cp "$TEST_INSTALL_BINARY" "$output" ;;
+esac
+EOF
+cat > "$installer_mock/go" <<'EOF'
+#!/bin/sh
+set -eu
+if [ "$TEST_INSTALL_BINARY" != "$GOBIN/env-updater" ]; then
+    cp "$TEST_INSTALL_BINARY" "$GOBIN/env-updater"
+fi
+chmod 0755 "$GOBIN/env-updater"
+EOF
+chmod 0755 "$installer_mock/curl" "$installer_mock/go"
+asset="env-updater-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
+case "$asset" in
+    env-updater-linux-x86_64) asset=env-updater-linux-amd64 ;;
+    env-updater-linux-aarch64) asset=env-updater-linux-arm64 ;;
+    env-updater-darwin-x86_64) asset=env-updater-darwin-amd64 ;;
+    env-updater-darwin-aarch64) asset=env-updater-darwin-arm64 ;;
+esac
+TEST_INSTALL_BINARY="$REPO_ROOT/env-updater"; export TEST_INSTALL_BINARY
+printf '%s  %s\n' "$(sha "$TEST_INSTALL_BINARY")" "$asset" > "$installer_tmp/binary.sha256"
+TEST_INSTALL_CHECKSUM="$installer_tmp/binary.sha256"; export TEST_INSTALL_CHECKSUM
+PATH="$installer_mock:$PATH"; export PATH
+sh "$REPO_ROOT/install.sh" --binary --dir "$installer_tmp/prebuilt" --yes >/dev/null
+assert_eq "0" "$([ -x "$installer_tmp/prebuilt/env-updater" ] && echo 0 || echo 1)" "Installer downloads and installs verified binary"
+assert_eq "$("$installer_tmp/prebuilt/env-updater" --version --no-header)" "env-updater v$VERSION" "Installed prebuilt executable runs"
+printf '%s  %s\n' "0000" "$asset" > "$installer_tmp/bad.sha256"
+TEST_INSTALL_CHECKSUM="$installer_tmp/bad.sha256"; export TEST_INSTALL_CHECKSUM
+set +e
+sh "$REPO_ROOT/install.sh" --binary --dir "$installer_tmp/rejected" --yes >/dev/null 2>&1
+installer_rc=$?
+set -e
+assert_eq "1" "$installer_rc" "Installer rejects a checksum mismatch"
+assert_eq "1" "$([ ! -e "$installer_tmp/rejected/env-updater" ] && echo 1 || echo 0)" "Checksum failure leaves no installed binary"
+TEST_INSTALL_CHECKSUM="$installer_tmp/binary.sha256"; export TEST_INSTALL_CHECKSUM
+sh "$REPO_ROOT/install.sh" --source --dir "$installer_tmp/source" --yes >/dev/null
+assert_eq "0" "$([ -x "$installer_tmp/source/env-updater" ] && echo 0 || echo 1)" "Installer builds and installs from source"
+assert_eq "$("$installer_tmp/source/env-updater" --version --no-header)" "env-updater v$VERSION" "Installed source executable runs"
+
+# ------------------------------------------------------------------------------
 printf "\n========================================\n"
 printf "Tests passed: %d\n" "$PASS_COUNT"
 printf "Tests failed: %d\n" "$FAIL_COUNT"
